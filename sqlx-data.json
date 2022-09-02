@@ -1,0 +1,49 @@
+{
+  "db": "SQLite",
+  "49c7dd1b28bd01904bf42178f79080048bec331f7b86f4c62a0cb42cd9d00462": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int64"
+        }
+      ],
+      "nullable": [
+        true
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "\nINSERT OR IGNORE INTO DOMAINS (rowid, base_url)\nVALUES (NULL, ?1) RETURNING id\n            "
+  },
+  "5602f9bf7af58eb127962caa0472d667d57522011e668ed842a172adc2c005e5": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id",
+          "ordinal": 0,
+          "type_info": "Int64"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Right": 1
+      }
+    },
+    "query": "\nINSERT INTO DOMAINS (rowid, base_url)\nVALUES (NULL, ?1) RETURNING id\n        "
+  },
+  "a164899ea514d21aa4fd0881f8182d070f9f9ee42c4ae92b5de55ac2f22a69a2": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Right": 4
+      }
+    },
+    "query": "\nINSERT INTO DOMAIN_LOCAL_LINKS (domain_id, link_url, title, body)\nVALUES (?1, ?2, ?3, ?4)\n            "
+  }
+}

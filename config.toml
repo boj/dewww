@@ -1,0 +1,12 @@
+[runner]
+# milliseconds between new page fetch
+# let's be good netizens
+delay = 200
+
+[client]
+timeout = 5 # seconds
+
+[database]
+file = "database.sqlite"
+url = "sqlite:database.sqlite"
+max_conns = 5
