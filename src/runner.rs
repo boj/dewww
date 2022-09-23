@@ -1,5 +1,9 @@
+use std::str::FromStr;
+use std::time::Duration;
+
 use crate::crawler::*;
 use crate::database::*;
+use crate::settings::*;
 
 use reqwest::Client;
 use sqlx::{Pool, Sqlite};
@@ -14,6 +18,26 @@ pub struct Handler {
 }
 
 impl Handler {
+    pub fn build(
+        settings: &Settings,
+        pool: Pool<Sqlite>,
+        root: String,
+    ) -> Result<Handler, reqwest::Error> {
+        static APP_USER_AGENT: &str =
+            concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"),);
+        let client = reqwest::Client::builder()
+            .user_agent(APP_USER_AGENT)
+            .timeout(Duration::new(settings.client.timeout, 0))
+            .build()?;
+
+        Ok(Handler {
+            root,
+            pool,
+            client,
+            timeout: settings.client.timeout,
+        })
+    }
+
     pub async fn run(&self, _sender: Sender<()>) {
         let mut crl = Crawler::new(self.root.clone());
         let res = crl.crawl(&self.client, self.timeout).await;

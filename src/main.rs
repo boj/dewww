@@ -1,11 +1,13 @@
 use std::str::FromStr;
 use std::time::Duration;
+
 use tokio::sync::mpsc::channel;
 
 mod crawler;
 mod database;
 mod runner;
 mod settings;
+mod web;
 
 use runner::Handler;
 use settings::Settings;
@@ -30,33 +32,26 @@ async fn main() -> Result<(), reqwest::Error> {
         .await
         .expect("Couldn't run database migrations");
 
-    static APP_USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"),);
-
-    let client = reqwest::Client::builder()
-        .user_agent(APP_USER_AGENT)
-        .timeout(Duration::new(settings.client.timeout, 0))
-        .build()?;
-
-    let (send, mut recv) = channel(1);
-
     // Kick off process with a seed URL for now
-    let handler = Handler {
-        root: "https://blog.bojo.wtf".to_string(),
-        pool,
-        client,
-        timeout: settings.runner.delay,
-    };
-    handler.run(send.clone()).await;
+    if let Ok(handler) = Handler::build(&settings, pool, "https://blog.bojo.wtf".to_string()) {
+        let (send, mut recv) = channel(1);
 
-    tokio::spawn(async move {
-        tokio::signal::ctrl_c()
-            .await
-            .expect("Could not register ctrl+c handler");
-    });
+        // Spawn the crawler
+        handler.run(send.clone()).await;
 
-    // https://tokio.rs/tokio/topics/shutdown
-    drop(send);
-    let _ = recv.recv().await;
+        // Spawn the web server
+        tokio::spawn(web::run());
+
+        tokio::spawn(async move {
+            tokio::signal::ctrl_c()
+                .await
+                .expect("Could not register ctrl+c handler");
+        });
+
+        // https://tokio.rs/tokio/topics/shutdown
+        drop(send);
+        let _ = recv.recv().await;
+    }
 
     Ok(())
 }
