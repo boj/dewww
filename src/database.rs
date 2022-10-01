@@ -1,19 +1,19 @@
-use crate::crawler::Crawler;
+use crate::types::*;
 
-pub async fn insert(pool: &sqlx::SqlitePool, crl: &Crawler) -> Result<(), sqlx::Error> {
+pub async fn insert(pool: &sqlx::SqlitePool, site: &SiteData) -> Result<(), sqlx::Error> {
     // Add top level searched domain
     let domain = sqlx::query!(
         r#"
 INSERT INTO DOMAINS (rowid, base_url)
 VALUES (NULL, ?1) RETURNING id
         "#,
-        crl.root
+        site.root
     )
     .fetch_one(pool)
     .await?;
 
     // Record all top level domain local links
-    for link in crl.local.iter() {
+    for link in site.local.iter() {
         println!("content: {:?}", link.url);
         sqlx::query!(
             r#"
@@ -31,7 +31,7 @@ VALUES (?1, ?2, ?3, ?4)
 
     // Record any new external links from top level domain
     // Record their association
-    for link in crl.remote.iter() {
+    for link in site.remote.iter() {
         sqlx::query!(
             r#"
 INSERT OR IGNORE INTO DOMAINS (rowid, base_url)

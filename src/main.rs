@@ -1,5 +1,4 @@
 use std::str::FromStr;
-use std::time::Duration;
 
 use tokio::sync::mpsc::channel;
 
@@ -7,9 +6,10 @@ mod crawler;
 mod database;
 mod runner;
 mod settings;
+mod types;
 mod web;
 
-use runner::Handler;
+use runner::*;
 use settings::Settings;
 
 #[tokio::main]
@@ -32,26 +32,31 @@ async fn main() -> Result<(), reqwest::Error> {
         .await
         .expect("Couldn't run database migrations");
 
-    // Kick off process with a seed URL for now
-    if let Ok(handler) = Handler::build(&settings, pool, "https://blog.bojo.wtf".to_string()) {
-        let (send, mut recv) = channel(1);
+    static APP_USER_AGENT: &str = concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"),);
 
-        // Spawn the crawler
-        handler.run(send.clone()).await;
+    // TODO: Kick off process with a seed URL for now
+    let handler = HandlerBuilder::new()
+        .root(String::from("https://blog.bojo.wtf"))
+        .pool(pool)
+        .build(&settings, APP_USER_AGENT)?;
 
-        // Spawn the web server
-        tokio::spawn(web::run());
+    // Spawn the web server
+    tokio::spawn(web::run());
 
-        tokio::spawn(async move {
-            tokio::signal::ctrl_c()
-                .await
-                .expect("Could not register ctrl+c handler");
-        });
+    // Register ctrl+c handler
+    tokio::spawn(async move {
+        tokio::signal::ctrl_c()
+            .await
+            .expect("Could not register ctrl+c handler");
+    });
 
-        // https://tokio.rs/tokio/topics/shutdown
-        drop(send);
-        let _ = recv.recv().await;
-    }
+    // https://tokio.rs/tokio/topics/shutdown
+    let (send, mut recv) = channel(1);
+    // Spawn the crawler
+    handler.run(send.clone()).await;
+    // Cleanup
+    drop(send);
+    let _ = recv.recv().await;
 
     Ok(())
 }
